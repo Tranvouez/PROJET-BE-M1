@@ -1,0 +1,352 @@
+# Code et formules : 
+
+## Chargement des librairies : 
+
+library(readxl)
+library(ggplot2)
+library(tidyr)
+
+## Préambule de code : 
+
+#Importation de la table de mortalité TH0002
+TH002 <- read.table("TH0002.csv",header = TRUE,sep = ";")
+
+# Création de la colonne des probabilité de survie
+TH002$qx <- c(0, 1 - (TH002[-1, 2] / TH002[1:nrow(TH002) - 1, 2]))
+head(TH002)
+
+## Fonctions initiales : 
+
+### Fonction calcul des taux sans risque pour un nombre d'années donné. 
+
+# La fonction permet d'établir un vecteur des coefficients d'actualisation des années 0 à n-1.
+# Grâce aux valeurs de la variable période on peut choisir la période de prélèvement. 
+# Période = 0 début année | Période = 0.5 milieu d'année | période = 0 fin d'année
+
+# Entrée : 
+## maturité en années : une année = 1
+## taux : taux technique en vigueur, 1.75% -> taper 0.0175
+## période : période de prélèvement x € [0,1]
+
+# Sortie : 
+## v_taux : sort le vecteur des taux actualisés sur la période donnée de l'année 0 à l'année - 1
+
+f_vect_taux <- function(maturité,taux = 0.0175,période = 0){
+  v_taux <- 1/((1+taux) ** c(rep(0:(maturité-1))+ période))
+  return(v_taux)
+}
+
+f_vect_taux(maturité = 10, taux = 0.0175, période = 0)
+
+### Fonction calcul de probabilité de vivre à l'âge k + x sachant que l'on a l'âge x. 
+
+# La fonction retourne un vecteur de probabilité de taille nb_années. 
+# Elle calcule la probabilité de décès d'une personne à l'age x + i pour tout i € [1,nb_années]
+
+
+# Entrée : 
+## age : age de la personne aujourd'hui 
+## nb_années : années en plus de l'age actuel 
+
+# Sortie : 
+## v_survie : vecteur de probabilité que l'on vive jusqu'à l'âge x + i sachant que l'on a l'âge x.
+## pour i € [1,nb_années]
+
+f_survie_age_x_plus_k <- function(age, nb_années,table_morta = TH002) {
+  # Obtenir le numéro de ligne associés à l'age donnée en entrée dans la table de mortalité
+  indice_age_TM = which(table_morta[, 1] == age) 
+  max_age = nb_années + indice_age_TM
+  v_survie = table_morta[(indice_age_TM + 1): max_age, 2] / table_morta[indice_age_TM, 2]
+  return(v_survie)
+}
+
+### Fonction de récupération des probas de décès chaque année de age actuel à age + k
+
+# On récupère directement la probabilité de décédé d'une année à l'autre de en partant de l'âge actuel 
+# et jusqu'à l'âge + nb_années. 
+
+# Entrée : 
+## age : age de la personne aujourd'hui 
+## nb_années : années en plus de l'age actuel 
+
+# Sortie : 
+## v_proba_décès : vecteur de la probabilité de décéder d'une année à l'autre. 
+
+f_proba_deces <- function(age, nb_années, table_morta = TH002)
+{
+  indice_age_TM = which(table_morta[, 1] == age)
+  v_proba_décès = table_morta[indice_age_TM:(indice_age_TM + nb_années - 1), 3]
+  return(v_proba_décès)
+}
+
+# Exemple :
+f_proba_deces(0, 111, table_morta = TH002) 
+
+## Fonctions associés aux formules d'annuités. 
+
+### Annuités viagères à termes fractionnés avance immédiates et illimitées
+
+# Entrée : 
+## age : age de la personne aujourd'hui 
+## table_morta : table de mortalité utilisée 
+
+# Sortie : 
+## a_2pts_x : Annuités viagères à termes fractionnés d’avance immédiates et illimitées
+
+f_annuitée_viagère_fractionnés_avance_immediate_illimitee <- function(age, table_morta = TH002) {
+  
+  # On récupère l'année maximum du calcul : W - age 
+  nb_années = max(table_morta[, 1])  - age # les ages commencent à 0
+  
+  # On récupère le vecteur de survie sur n_années sachant que l'on a un certain âge
+  v_survie_age_x_plus_k <- f_survie_age_x_plus_k(age = age, nb_années = nb_années, table_morta = table_morta )
+  
+  #On récupère le vecteur des taux 
+  v_taux <- f_vect_taux(maturité = nb_années, période = 0)
+  
+  #On fait la somme du produit vectoriel 
+  a_2pts_x <- sum(v_survie_age_x_plus_k*v_taux)
+  
+  return(a_2pts_x)
+}
+
+# Exemple :
+f_annuitée_viagère_fractionnés_avance_immediate_illimitee(40,table_morta = TH002)
+
+
+### Annuités viagères à termes fractionnés d’avance immédiates et temporaires de n années
+
+
+# Entrée : 
+## age : age de la personne aujourd'hui 
+## table_morta : table de mortalité utilisée 
+## nb_années : année en plus de l'age actuel 
+
+# Sortie : 
+## a_2pts_xn : Annuités viagères à termes fractionnés d’avance immédiates et temporaires de n années
+
+
+f_annuitée_viagère_fractionnés_avance_immediate_n_années <- function(age, nb_années, table_morta = TH002){ 
+  
+  # On récupère le vecteur de survie sur n_années sachant que l'on a un certain âge
+  v_survie_age_x_plus_k <- f_survie_age_x_plus_k(age = age, nb_années = nb_années, table_morta = table_morta )
+  
+  #On récupère le vecteur des taux 
+  v_taux <- f_vect_taux(maturité = nb_années, période = 0)
+  
+  #On fait la somme du produit vectoriel 
+  a_2pts_x_n <- sum(v_survie_age_x_plus_k*v_taux)
+  
+  return(a_2pts_x_n)
+}
+
+f_annuitée_viagère_fractionnés_avance_immediate_n_années(age = 40, nb_années = 10, table_morta = TH002)
+
+### Assurance décès payable immédiatement au décès à effet immédiat 
+
+
+# Entrée : 
+## age : age de la personne aujourd'hui 
+## table_morta : table de mortalité utilisée 
+
+# Sortie : 
+# A_barre_x : Assurance décès payable immédiatement au décès à effet immédiat
+
+f_assureur_décès_payable_immédiat <- function(age, table_morta = TH002) {
+  
+  # On récupère l'année maximum du calcul : W - age 
+  nb_années = max(table_morta[, 1]) - age # les ages commencent à 0
+  
+  # On récupère le vecteur de proba de décès sur les n années 
+  v_p_x <- f_proba_deces(age = age, nb_années = nb_années, table_morta = table_morta)
+  
+  # On récupère le vecteur de survie sur n_années sachant que l'on a un certain âge
+  v_survie_age_x_plus_k <- f_survie_age_x_plus_k(age = age, nb_années = nb_années, table_morta = table_morta)
+  
+  #On récupère le vecteur des taux 
+  v_taux <- f_vect_taux(maturité = nb_années, période = 0.5)
+  
+  # Calcul par somme et produit vectoriel : 
+  A_barre_x <- sum(v_p_x*v_survie_age_x_plus_k*v_taux)
+  
+  liste <- list(v_p_x = v_p_x, v_survie_age_x_plus_k = v_survie_age_x_plus_k, v_taux = v_taux, A_barre_x = A_barre_x)
+  #return(A_barre_x)
+  return(liste)
+}
+
+# Exemple :
+# Problème dans cette fonction 
+
+ages = 90
+#Proba de décès
+diff(f_assureur_décès_payable_immédiat(age = ages, table_morta = TH002)[[1]])
+#Proba de survie
+diff(f_assureur_décès_payable_immédiat(age = ages, table_morta = TH002)[[2]])
+
+matrice_deces <- matrix(rep(0,30*30), ncol =30 , nrow = 30)
+for (i in 1:30){
+  matrice_deces[,i] <- c(f_assureur_décès_payable_immédiat(age = i+79, table_morta = TH002)[[1]],rep(NA,i-1))
+  }
+
+matrice_survie_k_plus <- matrix(rep(0,30*30), ncol =30 , nrow = 30)
+for (i in 1:30){
+  matrice_survie_k_plus[,i] <- c(f_assureur_décès_payable_immédiat(age = i+79, table_morta = TH002)[[2]],rep(NA,i-1))
+}
+
+x = 1:30
+plot(x,matrice_deces[1,], type = "l", col = "blue", xlab = "Age", ylab = "Proba de décès", main = "Proba de décès en fonction de l'âge")
+for (i in 2:30){
+  lines(x,matrice_deces[i,])
+}
+
+plot(x,matrice_survie_k_plus[1,], type = "l", col = "blue", xlab = "Age", ylab = "Proba de survie", main = "Proba de survie en fonction de l'âge")
+for (i in 2:30){
+  lines(x,matrice_survie_k_plus[i,])
+}
+
+# Test :
+v_A_barre = c()
+for (i in 0:110){ 
+  v_A_barre[i+1] <- f_assureur_décès_payable_immédiat(age = i, table_morta = TH002)
+}
+x = 0:110
+y = v_A_barre
+plot(x,y, type = "l", col = "blue", xlab = "Age", ylab = "Prime", main = "Prime unique en fonction de l'âge")
+which(diff(y)<0)
+
+## Fonctions de calcul des primes brutes : 
+
+### Prime : cotisation à vie 
+
+# Entrée :
+# age : age de la personne aujourd'hui
+## capital : capital que l'on souhaite recevoir
+## thêta1 : frais d'acquisition (5%)
+## thêta2 : frais dépendants du capital (0%)
+## thêta3 : frais de gestion (10%)
+## table_morta : table de mortalité choisie
+
+
+#Sortie :
+# prime annuelle dans le cadre d'une cotisation à vie :
+
+prime_brute_coti_vie <-
+  function(age, capital, theta1 = 0.05, theta2 = 0, theta3 = 0.1, table_morta = TH002){
+    
+    A_barre_x <- f_assureur_décès_payable_immédiat(age = age, table_morta = table_morta)
+    a_2pts_x <- f_annuitée_viagère_fractionnés_avance_immediate_illimitee(age = age, table_morta = table_morta)
+    
+    prime = (capital * (A_barre_x + theta2*a_2pts_x))/(a_2pts_x*(1-theta1 - theta3))
+    
+    return(prime)
+  }
+
+## Exemple :
+prime_brute_coti_vie(
+  age = 60,
+  capital = 1000,
+  theta1 = 0.05,
+  theta2 = 0,
+  theta3 = 0.1, 
+  table_morta = TH002
+)
+
+# Test : 
+v_primes = c()
+for (i in 0:110){ 
+  v_primes[i+1] <- prime_brute_coti_vie(age = i,capital = 1000,theta1 = 0.05,theta2 = 0,theta3 = 0.1,table_morta = TH002)
+}
+# Analyse de la fonction prime unique : 
+x = 0:110
+y = v_primes
+plot(x,y, type = "l", col = "blue", xlab = "Age", ylab = "Prime", main = "Prime unique en fonction de l'âge")
+which(diff(y)<0)
+
+
+### Prime : cotisation sur une durée de n années 
+
+# Entrée : 
+## age : age de la personne aujourd'hui 
+## capital : capital que l'on souhaite recevoir 
+## thêta1 : frais d'acquisition (5%) 
+## thêta2 : frais dépendants du capital (0%) 
+## thêta3 : frais de gestion (10%)
+## table_morta : table de mortalité choisie
+
+
+#Sortie : 
+## prime annuelle dans le cadre d'une cotisation de n années : 
+
+prime_brute_coti_n_années <-
+  function(age,
+           nb_années,
+           capital,
+           theta1 = 0.05,
+           theta2 = 0, 
+           theta3 = 0.1, 
+           table_morta = TH002) {
+    
+    A_barre_x <- f_assureur_décès_payable_immédiat(age = age, table_morta = table_morta)
+    a_2pts_x_n <- f_annuitée_viagère_fractionnés_avance_immediate_n_années(age = age, nb_années = nb_années, table_morta = table_morta)
+    
+    prime = (capital*(A_barre_x + theta2*a_2pts_x_n))/ ((1- theta1 - theta3)*a_2pts_x_n)
+    return(prime)
+  }
+
+# Exemple : 
+
+prime_brute_coti_n_années(age = 40, nb_années = 10, capital = 1000, theta1 = 0.05, theta2 = 0, theta3 = 0.1, table_morta = TH002)
+
+année = 10
+v_primes = c()
+for (i in 0:110){ 
+  v_primes[i+1] <- prime_brute_coti_n_années(age = i,nb_années = année,capital = 1000,theta1 = 0.05,theta2 = 0,theta3 = 0.1,table_morta = TH002)
+}
+# Analyse de la fonction prime unique : 
+x = 0:110
+y = v_primes
+plot(x,y, type = "l", col = "blue", xlab = "Age", ylab = "Prime", main = "Prime unique en fonction de l'âge")
+which(diff(y)<0)
+
+### Prime : prime unique 
+
+# Entrée : 
+## age : age de la personne aujourd'hui 
+## capital : capital que l'on souhaite recevoir 
+## thêta1 : frais d'acquisition (5%)
+## thêta2 : frais dépendants du capital (0%)
+## thêta3 : frais de gestion (10%)
+## table_morta : table de mortalité choisie
+
+#Sortie : 
+## prime  dans le cadre d'une cotisation unique : 
+
+prime_brute_unique <-
+  function(age,
+           capital,
+           theta1 = 0.05,
+           theta2 = 0, 
+           theta3 = 0.1, 
+           table_morta = TH002) {
+    
+    A_barre_x <- f_assureur_décès_payable_immédiat(age = age, table_morta = table_morta)
+    prime = (capital * (A_barre_x + theta2))/ (1- theta1 - theta3)
+    return(prime)
+  }
+
+
+# Exemple : 
+
+prime_brute_unique(age = 40, capital = 1000, theta1 = 0.05, theta2 = 0, theta3 = 0.1, table_morta = TH002)
+
+# Test :
+v_primes = c()
+for (i in 0:110){ 
+  v_primes[i+1] <- prime_brute_unique(age = i, capital = 1000, theta1 = 0.05, theta2 = 0, theta3 = 0.1, table_morta = TH002)
+}
+# Analyse de la fonction prime unique : 
+x = 0:110
+y = v_primes
+plot(x,y, type = "l", col = "blue", xlab = "Age", ylab = "Prime", main = "Prime unique en fonction de l'âge")
+which(diff(y)<0)
+

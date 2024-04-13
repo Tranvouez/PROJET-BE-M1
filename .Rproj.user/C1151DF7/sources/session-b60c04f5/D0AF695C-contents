@@ -1,0 +1,61 @@
+---
+title: "partie3_étude_table_simulée"
+author: "r"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Importation des tables : 
+
+```{r}
+# lecture des objets créés 
+# cohort_1811 <- readRDS("RDS/cohort_1811.rds")
+# cohort_1861 <- readRDS("RDS/cohort_1861.rds")
+# cohort_1911 <- readRDS("RDS/cohort_1911.rds")
+# 
+# M_1811 <- readRDS("RDS/M_1811.rds")
+# M_1861 <- readRDS("RDS/M_1861.rds")
+# M_1911 <- readRDS("RDS/M_1911.rds")
+# 
+# P_1811 <-  readRDS("RDS/P_1811.rds")
+# P_1861 <-  readRDS("RDS/P_1861.rds")
+# P_1911 <-  readRDS("RDS/P_1911.rds")
+# 
+# m_evol_age_bio_1811 <- readRDS("RDS/m_evol_age_bio_1811.rds")
+# m_evol_age_bio_1861 <- readRDS("RDS/m_evol_age_bio_1861.rds")
+# m_evol_age_bio_1911 <- readRDS("RDS/m_evol_age_bio_1911.rds")
+# 
+# effectif_mat_1811 <- readRDS("RDS/effectif_mat_1811.rds")
+# effectif_mat_1861 <- readRDS("RDS/effectif_mat_1861.rds")
+# effectif_mat_1911 <- readRDS("RDS/effectif_mat_1911.rds")
+# 
+# mat_somme_durée_1811 <- readRDS("RDS/mat_somme_durée_1811.rds")
+# mat_somme_durée_1861 <- readRDS("RDS/mat_somme_durée_1861.rds")
+# mat_somme_durée_1911 <- readRDS("RDS/mat_somme_durée_1911.rds")
+# 
+# age_bio_reel_1811 <- readRDS("RDS/age_bio_reel_1811.rds")
+# age_bio_reel_1861 <- readRDS("RDS/age_bio_reel_1861.rds")
+# age_bio_reel_1911 <- readRDS("RDS/age_bio_reel_1911.rds")
+
+mat_rognée_1811 <- readRDS("RDS/mat_rognée_1811.rds")
+mat_rognée_1861 <- readRDS("RDS/mat_rognée_1861.rds")
+mat_rognée_1911 <- readRDS("RDS/mat_rognée_1911.rds")
+```
+
+
+### Etude de la distribution par âges : 
+
+```{r}
+table(mat_rognée_1811[,2])
+table(mat_rognée_1811[,3])
+
+barplot(table(mat_rognée_1811[,50])[-1])
+barplot(table(mat_rognée_1811[,60])[-1])
+barplot(table(mat_rognée_1811[,100])[-1])
+barplot(table(mat_rognée_1811[,104])[-1])
+sum(table(mat_rognée_1811[,104])[-1])
+sum(table(mat_rognée_1811[,105])[-1])
+
+```
+
+
+
