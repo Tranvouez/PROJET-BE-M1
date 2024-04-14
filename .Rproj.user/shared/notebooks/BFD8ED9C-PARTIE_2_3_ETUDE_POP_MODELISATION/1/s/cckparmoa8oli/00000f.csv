@@ -1,5 +1,0 @@
-"0","mat_rognée_1811 <- readRDS(""RDS/mat_rognée_1811.rds"")
-"
-"2","Avis : impossible d'ouvrir le fichier compressé 'RDS/mat_rognée_1811.rds', cause probable : 'No such file or directory'"
-"2","Erreur dans gzfile(file, ""rb"") : impossible d'ouvrir la connexion
-"
